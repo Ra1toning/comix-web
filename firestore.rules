@@ -90,7 +90,7 @@ service cloud.firestore {
     }
 
     match /chapters/{chapterId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
     }
 
@@ -100,7 +100,7 @@ service cloud.firestore {
     }
 
     match /comics/{comicId}/chapters/{chapterId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
     }
 

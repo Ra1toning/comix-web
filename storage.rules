@@ -17,8 +17,15 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
-    match /comics/{allPaths=**} {
+    match /comics/{storageFolder}/{fileName} {
       allow read: if true;
+    }
+
+    match /comics/{storageFolder}/{chapterFolder}/{fileName} {
+      allow read: if isSignedIn();
+    }
+
+    match /comics/{allPaths=**} {
       allow create, update: if isAdmin() && isImageWithinLimit(15 * 1024 * 1024);
       allow delete: if isAdmin();
     }

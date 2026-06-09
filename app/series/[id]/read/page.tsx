@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MangaReader } from "@/components/reader/MangaReader";
 import { getComicById, getChapters, getChapterDetails, Comic, Chapter } from "@/lib/services/firebase-comic";
 import {
@@ -14,9 +14,10 @@ import { EmptyState } from "@/components/shared/EmptyState";
 
 export default function ReadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const chapterId = searchParams?.get("chapter");
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [comic, setComic] = useState<Comic | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -24,8 +25,15 @@ export default function ReadPage({ params }: { params: Promise<{ id: string }> }
   const [loading, setLoading] = useState(true);
   const [resumePage, setResumePage] = useState<number | null>(null);
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [authLoading, router, user]);
 
   useEffect(() => {
+    if (authLoading || !user) return;
+
     let cancelled = false;
 
     const fetchData = async () => {
@@ -45,11 +53,9 @@ export default function ReadPage({ params }: { params: Promise<{ id: string }> }
 
         let targetChapterId = chapterId;
         let latestProgress: Awaited<ReturnType<typeof getReadingProgress>> | null = null;
-        if (user) {
-          latestProgress = await getReadingProgress(user.uid, id);
-          if (!targetChapterId && latestProgress?.chapterId) {
-            targetChapterId = latestProgress.chapterId;
-          }
+        latestProgress = await getReadingProgress(user.uid, id);
+        if (!targetChapterId && latestProgress?.chapterId) {
+          targetChapterId = latestProgress.chapterId;
         }
 
         const earliestChapter =
@@ -69,7 +75,7 @@ export default function ReadPage({ params }: { params: Promise<{ id: string }> }
           if (cancelled) return;
           setActiveChapter(chapterData);
 
-          if (user && chapterData) {
+          if (chapterData) {
             const chapterProgress = await getChapterReadingProgress(
               user.uid,
               id,
@@ -81,8 +87,6 @@ export default function ReadPage({ params }: { params: Promise<{ id: string }> }
               latestProgress?.chapterId === targetChapterId ? latestProgress : null;
             const savedPage = chapterProgress?.page ?? legacyProgress?.page;
             setResumePage(typeof savedPage === "number" ? savedPage : 1);
-          } else {
-            setResumePage(1);
           }
         }
       } catch (err) {
@@ -96,9 +100,9 @@ export default function ReadPage({ params }: { params: Promise<{ id: string }> }
     return () => {
       cancelled = true;
     };
-  }, [id, chapterId, user]);
+  }, [authLoading, id, chapterId, user]);
 
-  if (loading) {
+  if (authLoading || !user || loading) {
     return (
       <div className="fixed inset-0 bg-[#050505]">
         <div className="absolute top-0 left-0 w-full p-4 md:px-6 flex items-center justify-between">

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Flame } from "lucide-react"
 import Link from "next/link"
+import { AnimatePresence, motion } from "framer-motion"
 import { getHomepageCarouselItems, CarouselItemWithComic } from "@/lib/services/firebase-carousel"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -101,34 +102,34 @@ export function FeaturedCarousel() {
           {current.badgeText || "Featured"}
         </Badge>
 
-        <div className="relative mb-2 h-16 overflow-hidden sm:mb-4 sm:h-32">
-          {items.map((item, index) => (
-            <h1
-              key={item.id}
-              className={`absolute top-0 line-clamp-2 w-full pr-4 text-2xl font-medium leading-tight text-white transition-all duration-[1000ms] sm:line-clamp-none sm:pr-0 sm:text-4xl md:text-6xl ${
-                index === currentIndex
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-8"
-              }`}
+        <div className="relative mb-2 h-20 overflow-hidden sm:mb-4 sm:h-24 md:h-40">
+          <AnimatePresence initial={false}>
+            <motion.h1
+              key={current.id}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-x-0 top-0 line-clamp-2 w-full break-words pr-4 text-2xl font-medium leading-tight text-white sm:pr-0 sm:text-4xl md:text-6xl"
             >
-              {item.titleOverride || item.comic?.title}
-            </h1>
-          ))}
+              {current.titleOverride || current.comic?.title}
+            </motion.h1>
+          </AnimatePresence>
         </div>
 
-        <div className="relative mb-5 h-[66px] w-full overflow-hidden pr-4 sm:mb-10 sm:h-[84px] sm:pr-0">
-          {items.map((item, index) => (
-            <p
-              key={item.id}
-              className={`absolute top-0 line-clamp-3 max-w-xl text-sm font-light leading-relaxed text-zinc-200 transition-all delay-100 duration-[1000ms] sm:line-clamp-none sm:text-lg sm:text-zinc-400 ${
-                index === currentIndex
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-4"
-              }`}
+        <div className="relative mb-5 h-12 w-full overflow-hidden pr-4 sm:mb-8 sm:h-14 sm:pr-0">
+          <AnimatePresence initial={false}>
+            <motion.p
+              key={current.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-x-0 top-0 line-clamp-2 max-w-xl break-words text-sm font-light leading-relaxed text-zinc-200 sm:text-lg sm:text-zinc-400"
             >
-              {item.descriptionOverride || item.comic?.description}
-            </p>
-          ))}
+              {current.descriptionOverride || current.comic?.description}
+            </motion.p>
+          </AnimatePresence>
         </div>
 
         <div className="flex flex-wrap gap-3 sm:gap-4">
@@ -147,19 +148,18 @@ export function FeaturedCarousel() {
             </>
           )}
         </div>
+      </div>
 
-
-        <div className="absolute bottom-0 left-0 flex gap-2 sm:bottom-[-2rem] sm:left-2">
-          {items.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrentIndex(idx)}
-              className={`h-1.5 rounded-full transition-all duration-500 ${
-                idx === currentIndex ? "w-8 bg-pink-500" : "w-2 bg-white/20 hover:bg-white/40"
-              }`}
-            />
-          ))}
-        </div>
+      <div className="absolute bottom-5 left-5 z-20 flex gap-2 sm:bottom-8 sm:left-10 md:left-14">
+        {items.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrentIndex(idx)}
+            className={`h-1.5 rounded-full transition-all duration-500 ${
+              idx === currentIndex ? "w-8 bg-pink-500" : "w-2 bg-white/20 hover:bg-white/40"
+            }`}
+          />
+        ))}
       </div>
     </section>
   )
