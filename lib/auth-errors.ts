@@ -31,6 +31,8 @@ export const authErrorMessage = (error: unknown): string => {
       return "Имэйл хаягаа баталгаажуулна уу. Баталгаажуулах холбоосыг имэйл рүү тань дахин илгээлээ.";
     case "auth/requires-recent-login":
       return "Аюулгүй байдлын үүднээс дахин нэвтэрч байж энэ үйлдлийг хийнэ.";
+    case "auth/unauthorized-continue-uri":
+      return "Сайтын domain Firebase-д зөвшөөрөгдөөгүй байна. Админд хандана уу.";
     default:
       return "Алдаа гарлаа. Дахин оролдоно уу.";
   }

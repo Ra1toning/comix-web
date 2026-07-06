@@ -97,6 +97,32 @@ const emailActionSettings = () =>
     ? { url: `${window.location.origin}/auth/action`, handleCodeInApp: true }
     : undefined;
 
+const errorCodeOf = (error: unknown) =>
+  typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code: string }).code)
+    : "";
+
+/**
+ * Баталгаажуулах имэйлийг манай custom хуудас руу чиглүүлж илгээнэ.
+ * Deploy хийсэн domain Firebase-ийн Authorized domains-д нэмэгдээгүй бол
+ * (auth/unauthorized-continue-uri) имэйл огт илгээгдэхгүй орхихын оронд
+ * Firebase-ийн стандарт хуудас руу чиглүүлээд ЗААВАЛ илгээнэ.
+ */
+const sendVerificationEmail = async (user: User) => {
+  try {
+    await sendEmailVerification(user, emailActionSettings());
+  } catch (error) {
+    if (errorCodeOf(error) === "auth/unauthorized-continue-uri") {
+      console.warn(
+        "Domain not in Firebase Authorized domains — falling back to default action URL."
+      );
+      await sendEmailVerification(user);
+    } else {
+      throw error;
+    }
+  }
+};
+
 const providerOf = (user: User): AuthProviderId =>
   user.providerData.some((item) => item.providerId === "google.com")
     ? "google.com"
@@ -207,7 +233,7 @@ export const registerWithEmail = async (
   } catch (error) {
     console.error("Failed to create user document:", error);
   }
-  await sendEmailVerification(credential.user, emailActionSettings());
+  await sendVerificationEmail(credential.user);
   await signOut(auth);
 };
 
@@ -220,7 +246,7 @@ export const loginWithEmail = async (email: string, password: string) => {
 
   if (!credential.user.emailVerified) {
     try {
-      await sendEmailVerification(credential.user, emailActionSettings());
+      await sendVerificationEmail(credential.user);
     } catch {
       // too-many-requests байж болно — өмнөх имэйл нь хүчинтэй хэвээр.
     }
@@ -243,9 +269,18 @@ export const signInWithGoogle = async () => {
   return { user: credential.user, profile };
 };
 
-/** Нууц үг сэргээх имэйл илгээнэ. */
-export const sendPasswordReset = (email: string) =>
-  sendPasswordResetEmail(auth, email, emailActionSettings());
+/** Нууц үг сэргээх имэйл илгээнэ (domain зөвшөөрөгдөөгүй бол стандарт хуудсаар). */
+export const sendPasswordReset = async (email: string) => {
+  try {
+    await sendPasswordResetEmail(auth, email, emailActionSettings());
+  } catch (error) {
+    if (errorCodeOf(error) === "auth/unauthorized-continue-uri") {
+      await sendPasswordResetEmail(auth, email);
+    } else {
+      throw error;
+    }
+  }
+};
 
 /**
  * Нууц үг солино. Firebase нь саяхан нэвтэрсэн байхыг шаарддаг тул
