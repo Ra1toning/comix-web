@@ -6,6 +6,12 @@ import { Download, Plus, Tag, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Input } from "@/components/ui/input"
+import {
+  AdminPageHeader,
+  AdminPageTransition,
+  AdminPanel,
+  AdminPanelHeader,
+} from "@/components/admin/AdminUI"
 import { addGenre, deleteGenre, ensureDefaultGenres, Genre, getGenres, importGenresFromComics } from "@/lib/services/firebase-genres"
 
 export default function AdminGenresPage() {
@@ -63,47 +69,89 @@ export default function AdminGenresPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
-      <header className="border-b border-white/10 pb-6">
-        <p className="mb-2 text-xs font-semibold uppercase text-pink-400">Контентын ангилал</p>
-        <h1 className="text-3xl font-semibold text-white">Жанрын удирдлага</h1>
-        <p className="mt-2 text-sm text-zinc-500">Энд байгаа жанрууд комик бүртгэх хэсэг болон каталогийн шүүлтүүрт харагдана.</p>
-      </header>
+    <AdminPageTransition>
+      <div className="space-y-5">
+        <AdminPageHeader
+          title="Жанрууд"
+          description="Энд байгаа жанрууд комик бүртгэх форм болон каталогийн шүүлтүүрт харагдана."
+        />
 
-      <div className="flex flex-col gap-3 border border-white/10 bg-white/[0.02] p-5 sm:flex-row">
-        <Input value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && create()} placeholder="Шинэ жанрын нэр" className="rounded-none border-white/10 bg-black/30" />
-        <Button onClick={create} disabled={busy || !name.trim()} className="rounded-none bg-white text-black hover:bg-zinc-200">
-          <Plus className="mr-2 size-4" />Нэмэх
-        </Button>
-        <Button onClick={importExisting} disabled={busy} variant="outline" className="rounded-none border-white/10">
-          <Download className="mr-2 size-4" />Комикуудаас импортлох
-        </Button>
-      </div>
-
-      {message && <p className="text-sm text-pink-300">{message}</p>}
-
-      <div className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
-        {genres.map((genre) => (
-          <div key={genre.id} className="flex items-center justify-between bg-[#0b0b0c] px-4 py-4">
-            <span className="flex items-center gap-3 text-sm text-white"><Tag className="size-4 text-pink-400" />{genre.name}</span>
-            <Button onClick={() => setDeleteTarget(genre)} disabled={busy} variant="ghost" size="icon" className="rounded-none text-zinc-600 hover:bg-red-500/10 hover:text-red-400">
-              <Trash2 className="size-4" />
+        <AdminPanel className="p-3">
+          <div className="flex flex-col gap-2.5 sm:flex-row">
+            <Input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              onKeyDown={(event) => event.key === "Enter" && create()}
+              placeholder="Шинэ жанрын нэр"
+              className="h-9 flex-1 rounded-lg border-white/10 bg-white/[0.03] text-[13px]"
+            />
+            <Button size="sm" onClick={create} disabled={busy || !name.trim()} className="gap-1.5">
+              <Plus className="size-4" />
+              Нэмэх
+            </Button>
+            <Button
+              size="sm"
+              onClick={importExisting}
+              disabled={busy}
+              variant="outline"
+              className="gap-1.5 border-white/10"
+            >
+              <Download className="size-4" />
+              Комикуудаас импортлох
             </Button>
           </div>
-        ))}
-        {!genres.length && <p className="col-span-full bg-[#0b0b0c] p-8 text-center text-sm text-zinc-500">Жанр алга. Одоо байгаа комикуудаас импортлоорой.</p>}
-      </div>
+        </AdminPanel>
 
-      <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        title="Жанр устгах"
-        description={`"${deleteTarget?.name || ''}" жанр бүх комикоос хасагдаж, жагсаалтаас бүр мөсөн устна.`}
-        loading={busy}
-        onConfirm={remove}
-        onOpenChange={(open) => {
-          if (!open && !busy) setDeleteTarget(null)
-        }}
-      />
-    </div>
+        {message && (
+          <p className="rounded-xl border border-pink-400/20 bg-pink-400/10 p-3 text-sm text-pink-200">
+            {message}
+          </p>
+        )}
+
+        <AdminPanel>
+          <AdminPanelHeader title="Бүртгэлтэй жанрууд" hint={`${genres.length} жанр`} />
+          {genres.length ? (
+            <div className="grid gap-1.5 p-3 sm:grid-cols-2 lg:grid-cols-3">
+              {genres.map((genre) => (
+                <div
+                  key={genre.id}
+                  className="group flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] py-1.5 pl-3.5 pr-1.5 transition-colors hover:border-white/15"
+                >
+                  <span className="flex items-center gap-2.5 text-[13px] text-zinc-200">
+                    <Tag className="size-3.5 text-pink-300/80" />
+                    {genre.name}
+                  </span>
+                  <Button
+                    onClick={() => setDeleteTarget(genre)}
+                    disabled={busy}
+                    variant="ghost"
+                    size="icon"
+                    title="Жанр устгах"
+                    className="size-7 text-zinc-700 opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="p-10 text-center text-sm text-zinc-500">
+              Жанр алга. Одоо байгаа комикуудаас импортлоорой.
+            </p>
+          )}
+        </AdminPanel>
+
+        <ConfirmDialog
+          open={Boolean(deleteTarget)}
+          title="Жанр устгах"
+          description={`"${deleteTarget?.name || ''}" жанр бүх комикоос хасагдаж, жагсаалтаас бүр мөсөн устна.`}
+          loading={busy}
+          onConfirm={remove}
+          onOpenChange={(open) => {
+            if (!open && !busy) setDeleteTarget(null)
+          }}
+        />
+      </div>
+    </AdminPageTransition>
   )
 }

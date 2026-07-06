@@ -13,7 +13,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { getComicById, Comic } from "./firebase-comic";
+import { getComicByIdSafe, Comic } from "./firebase-comic";
 
 export interface ReadingProgress {
   comicId: string;
@@ -201,7 +201,7 @@ export const getContinueReading = async (uid: string, maxItems = 6) => {
   })) as ReadingProgress[];
 
   const comics = await Promise.all(
-    progressList.map((progress) => getComicById(progress.comicId))
+    progressList.map((progress) => getComicByIdSafe(progress.comicId))
   );
 
   return progressList
@@ -221,7 +221,7 @@ export const getUserLibrary = async (uid: string) => {
   })) as LibraryEntry[];
 
   const comics = await Promise.all(
-    entries.map((entry) => getComicById(entry.comicId))
+    entries.map((entry) => getComicByIdSafe(entry.comicId))
   );
 
   return entries

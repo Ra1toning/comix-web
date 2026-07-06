@@ -16,7 +16,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Chapter, Comic, getChapters, getComicById, incrementComicViewOnce } from "@/lib/services/firebase-comic"
+import { Chapter, Comic, getPublishedChapters, getComicByIdSafe, incrementComicViewOnce } from "@/lib/services/firebase-comic"
 import {
   getLibraryEntry,
   getLikeStatus,
@@ -61,9 +61,9 @@ export default function SeriesDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([getComicById(id), getChapters(id)])
+    Promise.all([getComicByIdSafe(id), getPublishedChapters(id).catch(() => [] as Chapter[])])
       .then(([comicData, chapterData]) => {
-        setComic(comicData)
+        setComic(comicData && comicData.isPublished !== false ? comicData : null)
         setChapters(chapterData)
         setLikeCount(comicData?.likeCount || 0)
       })

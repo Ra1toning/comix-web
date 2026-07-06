@@ -2,8 +2,13 @@
 
 import { create } from 'zustand';
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth, db } from './firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth } from './firebase';
+import {
+  ensureUserDocument,
+  DEFAULT_AVATAR,
+  UserSubscription,
+  UserRole,
+} from './services/firebase-auth';
 
 const SESSION_IDLE_LIMIT_MS = 30 * 60 * 1000;
 const SESSION_CHECK_INTERVAL_MS = 60 * 1000;
@@ -40,7 +45,11 @@ interface UserProfile {
   email: string | null;
   name: string | null;
   photoURL?: string | null;
-  uniqueId?: string | null;
+  /** Өсөх эрэмбэтэй тоон Lumio ID. */
+  lumioId?: number | null;
+  role?: UserRole;
+  subscription?: UserSubscription | null;
+  provider?: "password" | "google.com";
 }
 
 interface AuthState {
@@ -62,6 +71,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 }));
 
+const isPasswordProvider = (firebaseUser: User) =>
+  firebaseUser.providerData.every((item) => item.providerId === "password");
 
 if (typeof window !== 'undefined') {
   const activityEvents: Array<keyof WindowEventMap> = [
@@ -85,18 +96,30 @@ if (typeof window !== 'undefined') {
         return;
       }
 
-
-      const userDocRef = doc(db, 'users', firebaseUser.uid);
-      const userDoc = await getDoc(userDocRef);
+      // Имэйл баталгаажаагүй бол нэвтэрсэнд тооцохгүй. signOut хийхгүй —
+      // бүртгэлийн урсгал (verification имэйл илгээх) дуусаагүй байж болно.
+      if (isPasswordProvider(firebaseUser) && !firebaseUser.emailVerified) {
+        useAuthStore.getState().setUser(null);
+        useAuthStore.getState().setLoading(false);
+        return;
+      }
 
       let name = firebaseUser.displayName;
       let photoURL = firebaseUser.photoURL;
-      let uniqueId: string | null = null;
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        name = data.displayName || data.name || name;
-        photoURL = data.photoURL || photoURL;
-        uniqueId = data.uniqueId || null;
+      let lumioId: number | null = null;
+      let role: UserRole = "user";
+      let subscription: UserSubscription | null = null;
+
+      try {
+        // Бичлэг байхгүй/lumioId-гүй бол энд автоматаар үүсгэж дугаарлана.
+        const profile = await ensureUserDocument(firebaseUser);
+        name = profile.displayName || name;
+        photoURL = profile.photoURL || photoURL;
+        lumioId = typeof profile.lumioId === "number" ? profile.lumioId : null;
+        role = profile.role || "user";
+        subscription = profile.subscription || null;
+      } catch (error) {
+        console.error("Failed to load user profile:", error);
       }
 
       touchLastActive();
@@ -105,9 +128,12 @@ if (typeof window !== 'undefined') {
       useAuthStore.getState().setUser({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        name: name,
-        photoURL: photoURL || "/profile.jpg",
-        uniqueId: uniqueId,
+        name,
+        photoURL: photoURL || DEFAULT_AVATAR,
+        lumioId,
+        role,
+        subscription,
+        provider: isPasswordProvider(firebaseUser) ? "password" : "google.com",
       });
     } else {
       useAuthStore.getState().setUser(null);

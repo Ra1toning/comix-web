@@ -38,5 +38,8 @@ if (typeof window !== "undefined") {
 }
 
 export const auth = getAuth(app);
+// Баталгаажуулах имэйл, reCAPTCHA зэрэг Firebase-ийн UI текстийг монголоор
+// (боломжгүй хэл дээр англи руу автоматаар буцна).
+auth.languageCode = "mn";
 export const db = getFirestore(app);
 export const storage = getStorage(app);

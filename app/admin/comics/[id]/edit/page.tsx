@@ -7,6 +7,7 @@ import { getComicById } from '@/lib/services/firebase-comic';
 import { Comic } from '@/lib/services/firebase-comic';
 import { updateComic } from '@/lib/services/firebase-admin';
 import { ComicForm, ComicFormData } from '@/components/admin/ComicForm';
+import { AdminPageHeader, AdminPageTransition } from '@/components/admin/AdminUI';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -72,28 +73,28 @@ export default function EditComicPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <AdminPageTransition>
+      <div className="mx-auto max-w-3xl space-y-5">
+        <AdminPageHeader
+          title="Комик засах"
+          description={comic.title}
+          actions={
+            <Link href="/admin/comics">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-zinc-400 hover:text-white">
+                <ArrowLeft className="size-4" />
+                Буцах
+              </Button>
+            </Link>
+          }
+        />
 
-      <div className="flex items-center gap-4">
-        <Link href="/admin/comics">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Буцах
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold">Комик засах</h1>
-          <p className="text-foreground/70 mt-1">{comic.title}</p>
-        </div>
+        <ComicForm
+          initialData={comic}
+          loading={submitting}
+          onSubmit={handleSubmit}
+          onCancel={() => router.push('/admin/comics')}
+        />
       </div>
-
-
-      <ComicForm
-        initialData={comic}
-        loading={submitting}
-        onSubmit={handleSubmit}
-        onCancel={() => router.push('/admin/comics')}
-      />
-    </div>
+    </AdminPageTransition>
   );
 }

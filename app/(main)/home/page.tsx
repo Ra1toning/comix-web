@@ -11,7 +11,7 @@ import { LatestReleaseRow, LatestReleaseProps } from "@/components/shared/Latest
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Reveal } from "@/components/shared/Reveal"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getAllComics, getComicById, getLatestChapters, Comic } from "@/lib/services/firebase-comic"
+import { getPublishedComics, getComicByIdSafe, getLatestChapters, Comic } from "@/lib/services/firebase-comic"
 import { getContinueReading } from "@/lib/services/firebase-reading"
 import { useAuth } from "@/lib/useAuth"
 import { normalizeComicStatus } from "@/lib/comic-taxonomy"
@@ -64,17 +64,17 @@ export default function HomePage() {
   const [loadingContinue, setLoadingContinue] = useState(true)
 
   useEffect(() => {
-    getAllComics()
-      .then((items) => setSeasonal(items.filter((comic) => normalizeComicStatus(comic.status) === "Идэвхтэй" && comic.isPublished !== false)))
+    getPublishedComics()
+      .then((items) => setSeasonal(items.filter((comic) => normalizeComicStatus(comic.status) === "Идэвхтэй")))
       .catch(console.error)
       .finally(() => setLoadingSeasonal(false))
 
     getLatestChapters(6)
       .then(async (chapters) => {
-        const comics = await Promise.all(chapters.map((chapter) => getComicById(chapter.comicId)))
+        const comics = await Promise.all(chapters.map((chapter) => getComicByIdSafe(chapter.comicId)))
         setLatest(chapters.flatMap((chapter, index) => {
           const comic = comics[index]
-          return comic ? [{
+          return comic && comic.isPublished !== false ? [{
             id: chapter.id,
             title: comic.title,
             chapter: chapter.chapterNumber,

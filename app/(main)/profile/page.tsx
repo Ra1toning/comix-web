@@ -39,12 +39,20 @@ export default function ProfilePage() {
       return
     }
 
-    getUserProfile(user.uid).then((data) => setProfile({
-      name: data?.displayName || user.displayName || `Уншигч ${user.uid.slice(0, 4)}`,
-      avatar: data?.photoURL || user.photoURL || "/profile.jpg",
-      isOnline: true,
-      subscription: { type: data?.subscriptionType || "FREE", daysLeft: data?.daysLeft },
-    })).catch(console.error)
+    getUserProfile(user.uid).then((data) => {
+      const sub = data?.subscription
+      const expiresAt = sub?.expiresAt?.toDate?.() as Date | undefined
+      const active = sub?.status === "active" && expiresAt && expiresAt.getTime() > Date.now()
+      setProfile({
+        name: data?.displayName || user.displayName || `Уншигч ${user.uid.slice(0, 4)}`,
+        avatar: data?.photoURL || user.photoURL || "/profile.jpg",
+        isOnline: true,
+        subscription: active
+          ? { type: String(sub.plan || "PLUS").toUpperCase(), daysLeft: Math.max(1, Math.ceil((expiresAt.getTime() - Date.now()) / 86400000)) }
+          : { type: "FREE" },
+        lumioId: typeof data?.lumioId === "number" ? data.lumioId : null,
+      })
+    }).catch(console.error)
 
     getUserLibrary(user.uid)
       .then((library) => setItems(library.map(({ entry, comic }) => ({

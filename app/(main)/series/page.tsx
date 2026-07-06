@@ -9,7 +9,7 @@ import { SeriesFilterSidebar } from "@/components/shared/SeriesFilterSidebar"
 import { CatalogSeriesCard, CatalogSeriesProps } from "@/components/shared/CatalogSeriesCard"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Reveal } from "@/components/shared/Reveal"
-import { getAllComics, Comic } from "@/lib/services/firebase-comic"
+import { getPublishedComics, Comic } from "@/lib/services/firebase-comic"
 import { getGenres } from "@/lib/services/firebase-genres"
 import { COMIC_STATUSES, COMIC_TYPES } from "@/lib/comic-taxonomy"
 
@@ -44,7 +44,7 @@ export default function SeriesListPage() {
   const perPage = 20
 
   useEffect(() => {
-    Promise.all([getAllComics(), getGenres()])
+    Promise.all([getPublishedComics(), getGenres()])
       .then(([comicItems, managedGenres]) => {
         setComics(comicItems)
         const names = managedGenres.length

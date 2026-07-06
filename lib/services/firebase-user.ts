@@ -1,6 +1,6 @@
 import { auth, db, storage } from "../firebase";
-import { updateProfile, updatePassword } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { updateProfile } from "firebase/auth";
+import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 
@@ -36,17 +36,10 @@ export const updateUserProfile = async (uid: string, displayName: string, photoF
   await updateDoc(userDocRef, {
     displayName: displayName || user.displayName,
     ...(photoURL && { photoURL: photoURL }),
+    updatedAt: serverTimestamp(),
   });
 
   return { displayName, photoURL };
-};
-
-
-export const changePassword = async (newPassword: string) => {
-  const user = auth.currentUser;
-  if (!user) throw new Error("Системд нэвтэрнэ үү");
-
-  await updatePassword(user, newPassword);
 };
 
 
@@ -58,5 +51,5 @@ export const getUserProfile = async (uid: string) => {
 
 export const updateUserSettings = async (uid: string, settings: Record<string, unknown>) => {
   const userDocRef = doc(db, "users", uid);
-  await updateDoc(userDocRef, settings);
+  await updateDoc(userDocRef, { ...settings, updatedAt: serverTimestamp() });
 };

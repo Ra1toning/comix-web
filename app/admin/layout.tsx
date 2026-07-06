@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AdminGuard } from '@/components/shared/AdminGuard';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
-import { Menu } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { AdminTopbar } from '@/components/admin/AdminTopbar';
 
 export default function AdminLayout({
   children,
@@ -15,39 +15,40 @@ export default function AdminLayout({
 
   return (
     <AdminGuard>
-      <div className="flex min-h-dvh bg-[var(--background)]">
+      <div className="relative min-h-dvh bg-[#070709] text-zinc-100 antialiased selection:bg-pink-400/25">
+
+        {/* Ambient орчин — гэрлийн бөмбөлгүүд + нарийн цэгэн тор */}
+        <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div className="absolute -left-40 -top-48 size-[560px] rounded-full bg-pink-500/[0.07] blur-[130px]" />
+          <div className="absolute -right-32 top-1/4 size-[480px] rounded-full bg-violet-500/[0.06] blur-[130px]" />
+          <div className="absolute -bottom-48 left-1/3 size-[520px] rounded-full bg-cyan-400/[0.045] blur-[130px]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.035)_1px,transparent_0)] bg-[size:26px_26px] [mask-image:radial-gradient(ellipse_at_top,black_20%,transparent_75%)]" />
+        </div>
 
         <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
+        <div className="relative flex min-h-dvh flex-col md:pl-[268px]">
+          <AdminTopbar onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex min-h-dvh flex-1 flex-col md:ml-64">
-
-          <div className="md:hidden border-b border-white/10 p-4 flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
-            <h1 className="text-lg font-bold">Админ</h1>
-          </div>
-
-
-          <main className="min-h-0 flex-1 overflow-y-auto">
-            <div className="p-4 sm:p-6 md:p-8">
+          <main className="flex-1">
+            <div className="mx-auto w-full max-w-[1240px] px-4 pb-16 pt-4 sm:px-6">
               {children}
             </div>
           </main>
         </div>
 
-
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 md:hidden z-30"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </AdminGuard>
   );

@@ -11,7 +11,7 @@ import { CatalogMarquee } from "@/components/landing/CatalogMarquee"
 import { ImmersiveJoinSection } from "@/components/landing/ImmersiveJoinSection"
 import { ReadingWaterfall } from "@/components/landing/ReadingWaterfall"
 import { useAuthStore } from "@/lib/authStore"
-import { Comic, getAllComics } from "@/lib/services/firebase-comic"
+import { Comic, getPublishedComics } from "@/lib/services/firebase-comic"
 
 export default function LandingPage() {
   const [comics, setComics] = useState<Comic[]>([])
@@ -19,10 +19,8 @@ export default function LandingPage() {
   const router = useRouter()
 
   useEffect(() => {
-    getAllComics()
-      .then(items =>
-        setComics(items.filter(comic => comic.isPublished !== false))
-      )
+    getPublishedComics()
+      .then(setComics)
       .catch(error => console.error("Failed to load landing catalog:", error))
   }, [])
 

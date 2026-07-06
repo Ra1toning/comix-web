@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Comic, ComicStatus, ComicType } from '@/lib/services/firebase-comic';
 import { ensureDefaultGenres, getGenres } from '@/lib/services/firebase-genres';
-import { COMIC_STATUSES, COMIC_TYPES } from '@/lib/comic-taxonomy';
+import { COMIC_STATUSES, COMIC_STATUS_INFO, COMIC_TYPES } from '@/lib/comic-taxonomy';
 
 export interface ComicFormData {
   title: string;
@@ -176,10 +176,10 @@ export const ComicForm = ({
   };
 
   return (
-    <Card className="border-white/10">
+    <Card className="rounded-xl border-white/[0.07] bg-white/[0.02]">
       <CardHeader>
-        <CardTitle>
-          {initialData?.id ? 'Комик засах' : 'Шинэ комик нэмэх'}
+        <CardTitle className="text-base">
+          {initialData?.id ? 'Комикийн мэдээлэл' : 'Комикийн мэдээлэл'}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -331,36 +331,51 @@ export const ComicForm = ({
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-medium">Төрөл *</label>
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
-              >
-                {comicTypes.map(type => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium">Төлөв *</label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
-              >
-                {comicStatuses.map(status => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
+          <div>
+            <label className="mb-2 block text-sm font-medium">Төрөл *</label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              className="w-full max-w-xs rounded-lg border border-white/10 bg-white/5 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
+            >
+              {comicTypes.map(type => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium">Төлөв *</label>
+            <div className="grid gap-3 md:grid-cols-3" role="radiogroup" aria-label="Комикийн төлөв">
+              {comicStatuses.map(status => {
+                const info = COMIC_STATUS_INFO[status];
+                const selected = formData.status === status;
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setFormData(prev => ({ ...prev, status }))}
+                    className={`rounded-lg border p-4 text-left transition-colors ${
+                      selected
+                        ? 'border-pink-400/60 bg-pink-400/10'
+                        : 'border-white/10 bg-white/[0.03] hover:border-white/25'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      {selected && <Check className="size-3.5 text-pink-300" />}
+                      {info.label}
+                    </span>
+                    <span className="mt-1.5 block text-xs leading-5 text-foreground/60">
+                      {info.description}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -376,18 +391,48 @@ export const ComicForm = ({
             />
           </div>
 
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="isPublished"
-              name="isPublished"
-              checked={formData.isPublished}
-              onChange={handleChange}
-              className="h-4 w-4 cursor-pointer rounded border-white/20"
-            />
-            <label htmlFor="isPublished" className="cursor-pointer text-sm font-medium">
-              Энэ комикийг нийтлэх
-            </label>
+          <div>
+            <label className="mb-2 block text-sm font-medium">Нийтлэх төлөв *</label>
+            <div className="grid gap-3 md:grid-cols-2" role="radiogroup" aria-label="Нийтлэх төлөв">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!formData.isPublished}
+                onClick={() => setFormData(prev => ({ ...prev, isPublished: false }))}
+                className={`rounded-lg border p-4 text-left transition-colors ${
+                  !formData.isPublished
+                    ? 'border-yellow-400/50 bg-yellow-400/10'
+                    : 'border-white/10 bg-white/[0.03] hover:border-white/25'
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  {!formData.isPublished && <Check className="size-3.5 text-yellow-300" />}
+                  Ноорог
+                </span>
+                <span className="mt-1.5 block text-xs leading-5 text-foreground/60">
+                  Зөвхөн админд харагдана. Уншигчид каталог, нүүр хуудаснаас олохгүй.
+                </span>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={formData.isPublished}
+                onClick={() => setFormData(prev => ({ ...prev, isPublished: true }))}
+                className={`rounded-lg border p-4 text-left transition-colors ${
+                  formData.isPublished
+                    ? 'border-green-400/50 bg-green-400/10'
+                    : 'border-white/10 bg-white/[0.03] hover:border-white/25'
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  {formData.isPublished && <Check className="size-3.5 text-green-300" />}
+                  Нийтлэх
+                </span>
+                <span className="mt-1.5 block text-xs leading-5 text-foreground/60">
+                  Сайт дээр шууд харагдана. Нийтлэгдсэн бүлэгтэй байвал уншигдана.
+                </span>
+              </button>
+            </div>
           </div>
 
           <div className="flex gap-3 border-t border-white/10 pt-4">

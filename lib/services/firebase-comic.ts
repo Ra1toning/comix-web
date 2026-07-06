@@ -55,8 +55,20 @@ const normalizeComicDoc = (id: string, data: any): Comic => ({
 });
 
 
+/** Админд зориулсан — ноорог комикуудыг мөн буцаана. */
 export const getAllComics = async () => {
   const q = query(collection(db, "comics"), orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => normalizeComicDoc(doc.id, doc.data()));
+};
+
+/** Нийтийн хуудсуудад зориулсан — зөвхөн нийтлэгдсэн комикууд. */
+export const getPublishedComics = async () => {
+  const q = query(
+    collection(db, "comics"),
+    where("isPublished", "==", true),
+    orderBy("createdAt", "desc")
+  );
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => normalizeComicDoc(doc.id, doc.data()));
 };
@@ -68,11 +80,34 @@ export const getComicById = async (comicId: string) => {
   return docSnap.exists() ? normalizeComicDoc(docSnap.id, docSnap.data()) : null;
 };
 
+/** getComicById-ийн алдаа залгидаг хувилбар — нийтлэгдээгүй комикт хандахад
+ * Firestore rules permission-denied шидэх тул жагсаалт бүхэлдээ унахаас сэргийлнэ. */
+export const getComicByIdSafe = async (comicId: string) => {
+  try {
+    return await getComicById(comicId);
+  } catch {
+    return null;
+  }
+};
 
+
+/** Админд зориулсан — ноорог бүлгүүдийг мөн буцаана. */
 export const getChapters = async (comicId: string) => {
   const q = query(
     collection(db, "chapters"),
     where("comicId", "==", comicId),
+    orderBy("chapterNumber", "desc")
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Chapter[];
+};
+
+/** Уншигчдад зориулсан — зөвхөн нийтлэгдсэн бүлгүүд. */
+export const getPublishedChapters = async (comicId: string) => {
+  const q = query(
+    collection(db, "chapters"),
+    where("comicId", "==", comicId),
+    where("isPublished", "==", true),
     orderBy("chapterNumber", "desc")
   );
   const snapshot = await getDocs(q);
@@ -87,9 +122,11 @@ export const getChapterDetails = async (chapterId: string) => {
 };
 
 
+/** Нүүр хуудасны "Сүүлд нэмэгдсэн" — зөвхөн нийтлэгдсэн бүлгүүд. */
 export const getLatestChapters = async (maxItems = 6) => {
   const q = query(
     collection(db, "chapters"),
+    where("isPublished", "==", true),
     orderBy("createdAt", "desc"),
     limit(maxItems)
   );

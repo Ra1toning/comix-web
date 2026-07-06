@@ -15,40 +15,83 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Шинэ хэрэглэгч үүсэхэд lumioId нь counters/users тоолуурын шинэ утгатай
+    // яг таарч байх ёстой (нэг transaction дотор) — ингэснээр ID давхцахгүй,
+    // өсөх эрэмбэтэй байх нь баталгаажна.
+    function lumioIdMatchesCounter() {
+      return request.resource.data.lumioId is int
+        && request.resource.data.lumioId ==
+          getAfter(/databases/$(database)/documents/counters/users).data.lastId;
+    }
+
     function validUserCreate(userId) {
       return isOwner(userId)
         && request.resource.data.keys().hasOnly([
           'uid',
+          'lumioId',
           'name',
           'displayName',
           'email',
-          'uniqueId',
           'photoURL',
-          'createdAt',
+          'role',
+          'provider',
+          'emailVerified',
+          'subscription',
           'readerTheme',
           'autoNextChapter',
-          'dataSaverMode'
+          'dataSaverMode',
+          'createdAt',
+          'updatedAt',
+          'lastLoginAt'
         ])
         && (!('uid' in request.resource.data) || request.resource.data.uid == userId)
-        && (!('email' in request.resource.data) || request.resource.data.email == request.auth.token.email);
+        && (!('email' in request.resource.data) || request.resource.data.email == request.auth.token.email)
+        // Хэрэглэгч өөрийгөө админ болгож чадахгүй.
+        && (!('role' in request.resource.data) || request.resource.data.role == 'user')
+        // Хэрэглэгч өөртөө төлбөртэй эрх оноож чадахгүй.
+        && (!('subscription' in request.resource.data) || (
+          request.resource.data.subscription.plan == 'free'
+          && request.resource.data.subscription.status == 'none'
+        ))
+        && (!('lumioId' in request.resource.data) || lumioIdMatchesCounter());
     }
 
     function validUserUpdate() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        'name',
-        'displayName',
-        'photoURL',
-        'readerTheme',
-        'autoNextChapter',
-        'dataSaverMode'
-      ]);
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return affected.hasOnly([
+          'name',
+          'displayName',
+          'photoURL',
+          'readerTheme',
+          'autoNextChapter',
+          'dataSaverMode',
+          'updatedAt',
+          'lastLoginAt',
+          'emailVerified',
+          'lumioId'
+        ])
+        // lumioId-г зөвхөн байхгүй үед нь нэг л удаа (тоолууртай хамт) онооно.
+        && (!affected.hasAny(['lumioId']) || (
+          !('lumioId' in resource.data) && lumioIdMatchesCounter()
+        ))
+        // emailVerified нь Firebase Auth token-ийн бодит утгатай таарах ёстой.
+        && (!affected.hasAny(['emailVerified'])
+          || request.resource.data.emailVerified == request.auth.token.email_verified);
+    }
+
+    // Админ хэрэглэгчийн эрх, гишүүнчлэлийг удирдана; харин uid болон
+    // lumioId-г өөрчилж давхцал үүсгэхийг хориглоно.
+    function validAdminUserUpdate() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['uid', 'lumioId']);
     }
 
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if validUserCreate(userId);
-      allow update: if (isOwner(userId) && validUserUpdate()) || isAdmin();
+      allow update: if (isOwner(userId) && validUserUpdate())
+        || (isAdmin() && validAdminUserUpdate());
       allow delete: if isAdmin();
     }
 
@@ -77,20 +120,28 @@ service cloud.firestore {
       allow read: if isAdmin();
     }
 
-    match /usedIds/{documentId} {
+    // Хэрэглэгчийн өсөх дугаарлалтын тоолуур. Зөвхөн 1-ээр нэмэгдүүлэх
+    // боломжтой тул ID алгасах/давхцах боломжгүй.
+    match /counters/users {
       allow get: if isAuthenticated();
       allow create: if isAuthenticated()
-        && request.resource.data.keys().hasOnly(['inUse', 'timestamp'])
-        && request.resource.data.inUse == true;
+        && request.resource.data.keys().hasOnly(['lastId', 'updatedAt'])
+        && request.resource.data.lastId == 1;
+      allow update: if isAuthenticated()
+        && request.resource.data.keys().hasOnly(['lastId', 'updatedAt'])
+        && request.resource.data.lastId == resource.data.lastId + 1;
     }
 
+    // Нийтлэгдээгүй (ноорог) комикийг зөвхөн админ харна.
     match /comics/{comicId} {
-      allow read: if true;
+      allow read: if resource.data.isPublished == true || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
+    // Нийтлэгдээгүй бүлгийг зөвхөн админ харна; уншихад нэвтэрсэн байх шаардлагатай.
     match /chapters/{chapterId} {
-      allow read: if isAuthenticated();
+      allow read: if isAdmin()
+        || (isAuthenticated() && resource.data.isPublished == true);
       allow create, update, delete: if isAdmin();
     }
 

@@ -4,6 +4,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  getCountFromServer,
   query,
   where,
   setDoc,
@@ -11,9 +12,10 @@ import {
   deleteDoc,
   serverTimestamp,
   increment,
-  orderBy,
   Timestamp,
 } from "firebase/firestore";
+import { limit, orderBy } from "firebase/firestore";
+import { UserRole, UserSubscription } from "./firebase-auth";
 import { Comic, Chapter, ComicStatus, ComicType } from "./firebase-comic";
 import {
   uploadComicPoster,
@@ -40,57 +42,63 @@ export const isCurrentUserAdmin = async (uid: string): Promise<boolean> => {
 export interface AdminStats {
   totalComics: number;
   publishedComics: number;
+  draftComics: number;
   totalChapters: number;
+  publishedChapters: number;
   totalUsers: number;
-  totalCarouselItems: number;
   activeCarouselItems: number;
 }
 
+/**
+ * Бүх тоог Firestore-ийн server-side count()-оор авна — collection бүхлээр
+ * татахгүй тул admin dashboard хурдан ачаалагдаж, унших зардал хамгийн бага.
+ */
 export const getAdminStats = async (): Promise<AdminStats> => {
-  try {
+  const comicsRef = collection(db, "comics");
+  const chaptersRef = collection(db, "chapters");
 
-    const comicsSnapshot = await getDocs(collection(db, "comics"));
-    const totalComics = comicsSnapshot.size;
-    const publishedComics = comicsSnapshot.docs.filter(
-      (doc) => doc.data().isPublished
-    ).length;
+  const [
+    totalComics,
+    publishedComics,
+    totalChapters,
+    publishedChapters,
+    totalUsers,
+    activeCarouselItems,
+  ] = await Promise.all([
+    getCountFromServer(comicsRef),
+    getCountFromServer(query(comicsRef, where("isPublished", "==", true))),
+    getCountFromServer(chaptersRef),
+    getCountFromServer(query(chaptersRef, where("isPublished", "==", true))),
+    getCountFromServer(collection(db, "users")),
+    getCountFromServer(
+      query(collection(db, "homepageCarousel"), where("isActive", "==", true))
+    ),
+  ]);
+
+  const total = totalComics.data().count;
+  const published = publishedComics.data().count;
+
+  return {
+    totalComics: total,
+    publishedComics: published,
+    draftComics: total - published,
+    totalChapters: totalChapters.data().count,
+    publishedChapters: publishedChapters.data().count,
+    totalUsers: totalUsers.data().count,
+    activeCarouselItems: activeCarouselItems.data().count,
+  };
+};
 
 
-    const chaptersSnapshot = await getDocs(collection(db, "chapters"));
-    const totalChapters = chaptersSnapshot.size;
-
-
-    const usersSnapshot = await getDocs(collection(db, "users"));
-    const totalUsers = usersSnapshot.size;
-
-
-    const carouselSnapshot = await getDocs(
-      collection(db, "homepageCarousel")
-    );
-    const totalCarouselItems = carouselSnapshot.size;
-    const activeCarouselItems = carouselSnapshot.docs.filter(
-      (doc) => doc.data().isActive
-    ).length;
-
-    return {
-      totalComics,
-      publishedComics,
-      totalChapters,
-      totalUsers,
-      totalCarouselItems,
-      activeCarouselItems,
-    };
-  } catch (error) {
-    console.error("Error getting admin stats:", error);
-    return {
-      totalComics: 0,
-      publishedComics: 0,
-      totalChapters: 0,
-      totalUsers: 0,
-      totalCarouselItems: 0,
-      activeCarouselItems: 0,
-    };
-  }
+/** Dashboard-ын "Сүүлд нэмэгдсэн" хүснэгт — зөвхөн N бичлэг татна. */
+export const getRecentComicsForAdmin = async (maxItems = 5): Promise<Comic[]> => {
+  const q = query(
+    collection(db, "comics"),
+    orderBy("createdAt", "desc"),
+    limit(maxItems)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Comic[];
 };
 
 
@@ -98,23 +106,74 @@ export interface UserForAdmin {
   uid: string;
   email: string;
   displayName: string;
-  uniqueId: string;
+  /** Хуучин бүртгэлийн нэрийн талбар. */
+  name?: string;
+  /** Шинэ өсөх дугаарлалттай Lumio ID. Хуучин бүртгэлд байхгүй байж болно. */
+  lumioId?: number | null;
   photoURL?: string;
-  role?: "user" | "admin";
-  createdAt: Timestamp;
+  role?: UserRole;
+  provider?: string;
+  emailVerified?: boolean;
+  subscription?: UserSubscription | null;
+  createdAt?: Timestamp;
+  lastLoginAt?: Timestamp;
 }
 
+/** Бүх хэрэглэгчийг Lumio ID-ийн өсөх эрэмбээр буцаана (ID-гүй нь хамгийн сүүлд). */
 export const getAllUsersForAdmin = async (): Promise<UserForAdmin[]> => {
-  try {
-    const usersSnapshot = await getDocs(collection(db, "users"));
-    return usersSnapshot.docs.map((doc) => ({
-      uid: doc.id,
-      ...doc.data(),
-    })) as UserForAdmin[];
-  } catch (error) {
-    console.error("Error getting users:", error);
-    return [];
+  const usersSnapshot = await getDocs(collection(db, "users"));
+  const users = usersSnapshot.docs.map((doc) => ({
+    uid: doc.id,
+    ...doc.data(),
+  })) as UserForAdmin[];
+
+  return users.sort((a, b) => {
+    const aId = typeof a.lumioId === "number" ? a.lumioId : Number.POSITIVE_INFINITY;
+    const bId = typeof b.lumioId === "number" ? b.lumioId : Number.POSITIVE_INFINITY;
+    return aId - bId;
+  });
+};
+
+/**
+ * Хэрэглэгчийн эрхийг (subscription) сунгана. Одоо идэвхтэй эрхтэй бол
+ * дуусах хугацаан дээр нь, дууссан/байхгүй бол өнөөдрөөс эхлэн нэмнэ.
+ * Ирээдүйд QPay төлбөр амжилттай болмогц энэ логикоор сунгагдана.
+ */
+export const extendUserSubscription = async (
+  uid: string,
+  days: number
+): Promise<UserSubscription> => {
+  if (!Number.isFinite(days) || days <= 0) {
+    throw new Error("Сунгах хоногийн тоо 1-ээс дээш байх ёстой.");
   }
+
+  const userRef = doc(db, "users", uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) throw new Error("Хэрэглэгч олдсонгүй.");
+
+  const current = snap.data().subscription as UserSubscription | undefined;
+  const now = Date.now();
+  const currentExpiry = current?.expiresAt?.toDate?.()?.getTime() ?? 0;
+  const base = Math.max(now, currentExpiry);
+  const expiresAt = Timestamp.fromMillis(base + days * 86400000);
+  const startedAt =
+    current?.status === "active" && current?.startedAt
+      ? current.startedAt
+      : Timestamp.fromMillis(now);
+
+  const subscription: UserSubscription = {
+    plan: "plus",
+    status: "active",
+    startedAt,
+    expiresAt,
+  };
+
+  await updateDoc(userRef, {
+    subscription,
+    updatedAt: serverTimestamp(),
+  });
+
+  return subscription;
 };
 
 

@@ -4,6 +4,26 @@ export type ComicType = (typeof COMIC_TYPES)[number];
 export const COMIC_STATUSES = ["Идэвхтэй", "Дууссан", "Завсарласан"] as const;
 export type ComicStatus = (typeof COMIC_STATUSES)[number];
 
+/** Статус бүрийн утга — админ форм болон шүүлтүүрт ижил тайлбар харуулна. */
+export const COMIC_STATUS_INFO: Record<
+  ComicStatus,
+  { label: string; description: string }
+> = {
+  "Идэвхтэй": {
+    label: "Гарч байна (Ongoing)",
+    description:
+      "Энэ улирлын бүтээл — шинэ бүлгүүд тогтмол нэмэгдэнэ. Нүүр хуудасны «Улирлын гаргалтууд» хэсэгт харагдана.",
+  },
+  "Дууссан": {
+    label: "Дууссан",
+    description: "Бүрэн төгссөн бүтээл. Улирлын жагсаалтад орохгүй.",
+  },
+  "Завсарласан": {
+    label: "Завсарласан",
+    description: "Түр зогссон (hiatus). Улирлын жагсаалтад орохгүй.",
+  },
+};
+
 const TYPE_TRANSLATIONS: Record<string, ComicType> = {
   comic: "Комик",
   manga: "Манга",

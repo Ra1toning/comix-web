@@ -11,12 +11,18 @@ import {
   Trash2,
 } from 'lucide-react';
 import { CarouselForm, CarouselFormData } from '@/components/admin/CarouselForm';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import {
+  AdminPageHeader,
+  AdminPageTransition,
+  AdminPanel,
+  AdminStatTile,
+  StatusChip,
+} from '@/components/admin/AdminUI';
+import { Images, Eye as EyeIcon, ImagePlus } from 'lucide-react';
 import {
   CarouselItemWithComic,
   createCarouselItem,
@@ -117,196 +123,188 @@ export default function AdminCarouselPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <header className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase text-pink-400">
-            Нүүр хуудасны контент
-          </p>
-          <h1 className="text-2xl font-semibold sm:text-3xl">Нүүрний слайд</h1>
-          <p className="mt-1 text-sm text-foreground/60">
-            Нийтлэгдсэн комик сонгож, нүүрний слайдын зургийг тохируулна.
-          </p>
-        </div>
-        {!showForm && !editingItem && (
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Шинэ слайд
-          </Button>
+    <AdminPageTransition>
+      <div className="space-y-5">
+        <AdminPageHeader
+          title="Нүүрний слайд"
+          description="Нийтлэгдсэн комик сонгож, нүүр хуудасны онцлох слайдыг тохируулна."
+          actions={
+            !showForm && !editingItem ? (
+              <Button size="sm" onClick={() => setShowForm(true)} className="gap-1.5">
+                <Plus className="size-4" />
+                Шинэ слайд
+              </Button>
+            ) : undefined
+          }
+        />
+
+        {(showForm || editingItem) && (
+          <CarouselForm
+            initialData={editingItem || undefined}
+            loading={submitting}
+            onSubmit={editingItem ? handleEdit : handleAdd}
+            onCancel={closeForm}
+          />
         )}
-      </header>
 
-      {(showForm || editingItem) && (
-        <CarouselForm
-          initialData={editingItem || undefined}
-          loading={submitting}
-          onSubmit={editingItem ? handleEdit : handleAdd}
-          onCancel={closeForm}
-        />
-      )}
-
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 sm:grid-cols-3">
-        <div className="bg-[var(--background)] p-4">
-          <p className="text-xs text-foreground/50">Нийт слайд</p>
-          <p className="mt-1 text-2xl font-semibold">{items.length}</p>
+        <div className="grid grid-cols-3 gap-3">
+          <AdminStatTile label="Нийт слайд" value={items.length} icon={Images} />
+          <AdminStatTile
+            label="Идэвхтэй"
+            value={items.filter(item => item.isActive).length}
+            icon={EyeIcon}
+            tone="emerald"
+          />
+          <AdminStatTile
+            label="Тусгай зураг"
+            value={items.filter(item => item.bannerImageOverride).length}
+            icon={ImagePlus}
+            tone="sky"
+          />
         </div>
-        <div className="bg-[var(--background)] p-4">
-          <p className="text-xs text-foreground/50">Идэвхтэй</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-400">
-            {items.filter(item => item.isActive).length}
-          </p>
-        </div>
-        <div className="col-span-2 bg-[var(--background)] p-4 sm:col-span-1">
-          <p className="text-xs text-foreground/50">Тусгай зураг</p>
-          <p className="mt-1 text-2xl font-semibold">
-            {items.filter(item => item.bannerImageOverride).length}
-          </p>
-        </div>
-      </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
-        <Input
-          placeholder="Слайд хайх..."
-          value={searchTerm}
-          onChange={event => setSearchTerm(event.target.value)}
-          className="h-11 border-white/10 bg-white/[0.03] pl-10"
-        />
-      </div>
+        <AdminPanel className="p-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-600" />
+            <Input
+              placeholder="Слайд хайх..."
+              value={searchTerm}
+              onChange={event => setSearchTerm(event.target.value)}
+              className="h-9 rounded-lg border-white/10 bg-white/[0.03] pl-9 text-[13px]"
+            />
+          </div>
+        </AdminPanel>
 
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(item => (
-            <Skeleton key={item} className="h-28 rounded-md" />
-          ))}
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <Card className="border-dashed border-white/15 bg-transparent">
-          <CardContent className="flex flex-col items-center py-16 text-center">
-            <ImageIcon className="mb-3 h-8 w-8 text-foreground/30" />
-            <p className="font-medium">
-              {items.length ? 'Тохирох слайд олдсонгүй' : 'Слайд бүртгэгдээгүй байна'}
-            </p>
-            <p className="mt-1 text-sm text-foreground/50">
-              Нийтлэгдсэн комикоос нүүрний слайд үүсгэнэ үү.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="overflow-hidden rounded-md border border-white/10">
-          {filteredItems.map((item, index) => {
-            const displayImage =
-              item.bannerImageOverride ||
-              item.comic?.bannerImage ||
-              item.comic?.poster ||
-              '';
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map(item => (
+              <Skeleton key={item} className="h-28 rounded-xl" />
+            ))}
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <AdminPanel className="border-dashed">
+            <div className="flex flex-col items-center py-16 text-center">
+              <ImageIcon className="mb-3 size-8 text-zinc-700" />
+              <p className="text-sm font-medium text-zinc-300">
+                {items.length ? 'Тохирох слайд олдсонгүй' : 'Слайд бүртгэгдээгүй байна'}
+              </p>
+              <p className="mt-1 text-xs text-zinc-600">
+                Нийтлэгдсэн комикоос нүүрний слайд үүсгэнэ үү.
+              </p>
+            </div>
+          </AdminPanel>
+        ) : (
+          <AdminPanel className="overflow-hidden">
+            {filteredItems.map(item => {
+              const displayImage =
+                item.bannerImageOverride ||
+                item.comic?.bannerImage ||
+                item.comic?.poster ||
+                '';
 
-            return (
-              <div
-                key={item.id}
-                className="flex flex-col gap-4 border-b border-white/10 bg-white/[0.02] p-4 last:border-b-0 hover:bg-white/[0.045] sm:flex-row sm:items-center"
-              >
-                <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-md bg-black/30 sm:h-20 sm:w-36">
-                  {displayImage ? (
-                    <img
-                      src={displayImage}
-                      alt={item.titleOverride || item.comic?.title || 'Нүүрний слайд'}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <ImageIcon className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-foreground/30" />
-                  )}
-                  <span className="absolute left-2 top-2 rounded bg-black/75 px-1.5 py-0.5 text-[10px] text-white">
-                    #{item.order}
-                  </span>
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate font-semibold">
-                      {item.titleOverride || item.comic?.title}
-                    </h2>
-                    <Badge
-                      className={
-                        item.isActive
-                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
-                          : 'border-white/10 bg-white/5 text-foreground/50'
-                      }
-                    >
-                      {item.isActive ? 'Идэвхтэй' : 'Нуугдсан'}
-                    </Badge>
-                    {item.bannerImageOverride && (
-                      <Badge className="border-sky-500/20 bg-sky-500/10 text-sky-400">
-                        Тусгай зураг
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="mt-1 truncate text-sm text-foreground/55">
-                    {item.comic?.title} · {item.comic?.type}
-                    {item.badgeText ? ` · ${item.badgeText}` : ''}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-1 self-end sm:self-auto">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleToggle(item)}
-                    disabled={deleting === item.id}
-                    title={item.isActive ? 'Слайд нуух' : 'Слайд харуулах'}
-                  >
-                    {item.isActive ? (
-                      <Eye className="h-4 w-4 text-emerald-400" />
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col gap-4 border-b border-white/[0.06] p-4 transition-colors last:border-b-0 hover:bg-white/[0.025] sm:flex-row sm:items-center"
+                >
+                  <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-lg bg-black/30 sm:h-20 sm:w-36">
+                    {displayImage ? (
+                      <img
+                        src={displayImage}
+                        alt={item.titleOverride || item.comic?.title || 'Нүүрний слайд'}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
-                      <EyeOff className="h-4 w-4" />
+                      <ImageIcon className="absolute left-1/2 top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 text-zinc-700" />
                     )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingItem(item);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    disabled={submitting || deleting === item.id}
-                    title="Слайд засах"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDeleteTarget(item)}
-                    disabled={deleting === item.id || submitting}
-                    title="Слайд устгах"
-                    className="text-red-400 hover:text-red-300"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                    <span className="absolute left-2 top-2 rounded-md bg-black/75 px-1.5 py-0.5 font-mono text-[10px] text-white">
+                      #{item.order}
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="truncate text-[13px] font-semibold text-white">
+                        {item.titleOverride || item.comic?.title}
+                      </h2>
+                      {item.isActive ? (
+                        <StatusChip tone="emerald">Идэвхтэй</StatusChip>
+                      ) : (
+                        <StatusChip tone="zinc">Нуугдсан</StatusChip>
+                      )}
+                      {item.bannerImageOverride && (
+                        <StatusChip tone="sky">Тусгай зураг</StatusChip>
+                      )}
+                    </div>
+                    <p className="mt-1 truncate text-xs text-zinc-500">
+                      {item.comic?.title} · {item.comic?.type}
+                      {item.badgeText ? ` · ${item.badgeText}` : ''}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-0.5 self-end sm:self-auto">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleToggle(item)}
+                      disabled={deleting === item.id}
+                      title={item.isActive ? 'Слайд нуух' : 'Слайд харуулах'}
+                      className="size-8 text-zinc-500 hover:text-white"
+                    >
+                      {item.isActive ? (
+                        <Eye className="size-4 text-emerald-400" />
+                      ) : (
+                        <EyeOff className="size-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setShowForm(false);
+                        setEditingItem(item);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      disabled={submitting || deleting === item.id}
+                      title="Слайд засах"
+                      className="size-8 text-zinc-500 hover:text-white"
+                    >
+                      <Edit3 className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeleteTarget(item)}
+                      disabled={deleting === item.id || submitting}
+                      title="Слайд устгах"
+                      className="size-8 text-zinc-600 hover:bg-red-500/10 hover:text-red-400"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </AdminPanel>
+        )}
 
-      {errorMessage && (
-        <p className="border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
-          {errorMessage}
-        </p>
-      )}
+        {errorMessage && (
+          <p className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+            {errorMessage}
+          </p>
+        )}
 
-      <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        title="Слайд устгах"
-        description={`"${deleteTarget?.titleOverride || deleteTarget?.comic?.title || ''}" слайд болон upload хийсэн тусгай зураг бүр мөсөн устна.`}
-        loading={Boolean(deleting)}
-        onConfirm={handleDelete}
-        onOpenChange={(open) => {
-          if (!open && !deleting) setDeleteTarget(null);
-        }}
-      />
-    </div>
+        <ConfirmDialog
+          open={Boolean(deleteTarget)}
+          title="Слайд устгах"
+          description={`"${deleteTarget?.titleOverride || deleteTarget?.comic?.title || ''}" слайд болон upload хийсэн тусгай зураг бүр мөсөн устна.`}
+          loading={Boolean(deleting)}
+          onConfirm={handleDelete}
+          onOpenChange={(open) => {
+            if (!open && !deleting) setDeleteTarget(null);
+          }}
+        />
+      </div>
+    </AdminPageTransition>
   );
 }

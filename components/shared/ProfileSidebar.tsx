@@ -12,6 +12,7 @@ export interface UserProfileProps {
   avatar: string
   isOnline: boolean
   subscription: { type: string; daysLeft?: number }
+  lumioId?: number | null
 }
 
 export function ProfileSidebar({ profile }: { profile: UserProfileProps }) {
@@ -32,6 +33,9 @@ export function ProfileSidebar({ profile }: { profile: UserProfileProps }) {
           </div>
           <div className="min-w-0">
             <h2 className="truncate text-xl font-medium text-white">{profile.name}</h2>
+            {typeof profile.lumioId === "number" && (
+              <p className="mt-1 font-mono text-xs font-semibold tracking-wide text-pink-300">#{profile.lumioId}</p>
+            )}
             <p className="mt-2 flex items-center gap-2 text-xs text-zinc-500">
               <span className="size-1.5 bg-emerald-400" /> Идэвхтэй
             </p>

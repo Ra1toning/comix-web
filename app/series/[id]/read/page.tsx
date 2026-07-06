@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MangaReader } from "@/components/reader/MangaReader";
-import { getComicById, getChapters, getChapterDetails, Comic, Chapter } from "@/lib/services/firebase-comic";
+import { getComicByIdSafe, getPublishedChapters, getChapterDetails, Comic, Chapter } from "@/lib/services/firebase-comic";
 import {
   getChapterReadingProgress,
   getReadingProgress,
@@ -43,8 +43,8 @@ export default function ReadPage({ params }: { params: Promise<{ id: string }> }
 
       try {
         const [fetchedComic, fetchedChapters] = await Promise.all([
-          getComicById(id),
-          getChapters(id)
+          getComicByIdSafe(id),
+          getPublishedChapters(id).catch(() => [] as Chapter[])
         ]);
         if (cancelled) return;
         setComic(fetchedComic);

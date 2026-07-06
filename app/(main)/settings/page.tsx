@@ -10,6 +10,7 @@ import { Reveal } from "@/components/shared/Reveal"
 import { UserAvatar } from "@/components/shared/UserAvatar"
 import { useAuthStore } from "@/lib/authStore"
 import { changeUserPassword } from "@/lib/services/firebase-auth"
+import { authErrorMessage } from "@/lib/auth-errors"
 import { getUserProfile, updateUserProfile, updateUserSettings } from "@/lib/services/firebase-user"
 
 type TabId = "account" | "preferences" | "notifications" | "billing"
@@ -30,7 +31,8 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState("")
   const [photoPreview, setPhotoPreview] = useState("")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [uniqueId, setUniqueId] = useState("")
+  const [lumioId, setLumioId] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [message, setMessage] = useState("")
@@ -48,7 +50,8 @@ export default function SettingsPage() {
     getUserProfile(user.uid).then((profile) => {
       setDisplayName(profile?.displayName || user.name || "")
       setPhotoPreview(profile?.photoURL || user.photoURL || "/profile.jpg")
-      setUniqueId(profile?.uniqueId || user.uniqueId || "")
+      const id = profile?.lumioId ?? user.lumioId
+      setLumioId(typeof id === "number" ? `#${id}` : "")
       setAutoNext(typeof profile?.autoNextChapter === "boolean" ? profile.autoNextChapter : true)
       ready.current = true
     }).catch(console.error)
@@ -66,24 +69,37 @@ export default function SettingsPage() {
     setPhotoPreview(URL.createObjectURL(file))
   }
 
+  const canChangePassword = user?.provider !== "google.com"
+
   const saveAccount = async () => {
     if (!user) return
-    if (newPassword && newPassword !== confirmPassword) {
-      setMessage("Нууц үг таарахгүй байна.")
-      return
+    if (newPassword) {
+      if (newPassword.length < 6) {
+        setMessage("Шинэ нууц үг 6-с доошгүй тэмдэгттэй байх ёстой.")
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        setMessage("Шинэ нууц үг таарахгүй байна.")
+        return
+      }
+      if (!currentPassword) {
+        setMessage("Нууц үг солихын тулд одоогийн нууц үгээ оруулна уу.")
+        return
+      }
     }
     setSaving(true)
     setMessage("")
     try {
       await updateUserProfile(user.uid, displayName, photoFile)
-      if (newPassword) await changeUserPassword(newPassword)
+      if (newPassword) await changeUserPassword(currentPassword, newPassword)
+      setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
       setPhotoFile(null)
       setMessage("Өөрчлөлтийг хадгаллаа.")
     } catch (error) {
       console.error(error)
-      setMessage("Хадгалах үед алдаа гарлаа.")
+      setMessage(authErrorMessage(error))
     } finally {
       setSaving(false)
     }
@@ -136,18 +152,34 @@ export default function SettingsPage() {
                   <p className="truncate text-lg text-white">{displayName || "Хэрэглэгч"}</p>
                   <p className="truncate text-sm text-zinc-500">{user?.email}</p>
                 </div>
-                <div className="border border-white/10 px-4 py-3">
-                  <p className="text-[10px] uppercase text-zinc-600">Lumio ID</p>
-                  <p className="mt-1 text-sm text-white">{uniqueId || "—"}</p>
+                <div className="border border-pink-400/25 bg-pink-400/[0.06] px-4 py-3">
+                  <p className="text-[10px] uppercase text-zinc-500">Lumio ID</p>
+                  <p className="mt-1 font-mono text-base font-semibold tracking-wide text-pink-200">{lumioId || "—"}</p>
                 </div>
               </div>
 
               <div className="grid min-w-0 gap-5 sm:grid-cols-2">
                 <label className="min-w-0 space-y-2 text-xs uppercase text-zinc-600">Дэлгэцийн нэр<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} className={fieldClass} /></label>
                 <label className="min-w-0 space-y-2 text-xs uppercase text-zinc-600">Имэйл<input value={user?.email || ""} readOnly className={`${fieldClass} text-zinc-500`} /></label>
-                <label className="min-w-0 space-y-2 text-xs uppercase text-zinc-600">Шинэ нууц үг<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className={fieldClass} placeholder="••••••••" /></label>
-                <label className="min-w-0 space-y-2 text-xs uppercase text-zinc-600">Нууц үг баталгаажуулах<input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className={fieldClass} placeholder="••••••••" /></label>
               </div>
+
+              {canChangePassword ? (
+                <div className="space-y-5 border-t border-white/10 pt-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white">Нууц үг солих</h3>
+                    <p className="mt-1 text-xs text-zinc-600">Аюулгүй байдлын үүднээс одоогийн нууц үгээ оруулна.</p>
+                  </div>
+                  <div className="grid min-w-0 gap-5 sm:grid-cols-2">
+                    <label className="min-w-0 space-y-2 text-xs uppercase text-zinc-600 sm:col-span-2">Одоогийн нууц үг<input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className={`${fieldClass} sm:max-w-[calc(50%-0.625rem)]`} placeholder="••••••••" autoComplete="current-password" /></label>
+                    <label className="min-w-0 space-y-2 text-xs uppercase text-zinc-600">Шинэ нууц үг<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className={fieldClass} placeholder="••••••••" autoComplete="new-password" /></label>
+                    <label className="min-w-0 space-y-2 text-xs uppercase text-zinc-600">Шинэ нууц үг баталгаажуулах<input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className={fieldClass} placeholder="••••••••" autoComplete="new-password" /></label>
+                  </div>
+                </div>
+              ) : (
+                <p className="border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-zinc-500">
+                  Та Google бүртгэлээрээ нэвтэрдэг тул нууц үг энд солигдохгүй — Google бүртгэлийнхээ тохиргоог ашиглаарай.
+                </p>
+              )}
               {message && <p className="text-sm text-pink-300">{message}</p>}
               <Button onClick={saveAccount} disabled={saving} className="rounded-none bg-white px-6 text-black hover:bg-zinc-200">{saving ? "Хадгалж байна..." : "Хадгалах"}</Button>
             </div>
