@@ -86,15 +86,15 @@ export class EmailNotVerifiedError extends Error {
 const usersCounterRef = () => doc(db, "counters", "users");
 
 /**
- * Имэйл доторх линкийг манай /auth/action хуудас руу чиглүүлнэ.
- * handleCodeInApp=true үед Firebase линк дээр дарсан хэрэглэгчийг oobCode-той
- * нь хамт энэ URL руу шилжүүлдэг тул Console-ийн "Customize action URL"
- * тохиргоо шаардлагагүй — dev (localhost) болон production дээр
- * window.location.origin-оос автоматаар зөв domain-ийг авна.
+ * Имэйлийн үйлдэл дууссаны дараах "Continue" холбоосыг манай /auth/action
+ * хуудас руу заана. Имэйл доторх үндсэн линк ШУУД манай хуудас руу орохын
+ * тулд Firebase Console → Authentication → Templates → "Customize action URL"
+ * хэсэгт production domain-ийн /auth/action хаягийг тохируулна.
+ * Domain нь Authorized domains-д байх ёстой.
  */
 const emailActionSettings = () =>
   typeof window !== "undefined"
-    ? { url: `${window.location.origin}/auth/action`, handleCodeInApp: true }
+    ? { url: `${window.location.origin}/auth/action`, handleCodeInApp: false }
     : undefined;
 
 const errorCodeOf = (error: unknown) =>

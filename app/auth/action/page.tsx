@@ -12,7 +12,7 @@
  */
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   applyActionCode,
   verifyPasswordResetCode,
@@ -62,6 +62,7 @@ const codeOf = (error: unknown) =>
     : "";
 
 function AuthActionContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
   const oobCode = searchParams.get("oobCode") || "";
@@ -73,8 +74,10 @@ function AuthActionContent() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    // Параметргүй орж ирвэл (жишээ нь Firebase-ийн стандарт хуудасны
+    // "Continue" товчоор — үйлдэл аль хэдийн хийгдсэн) login руу чиглүүлнэ.
     if (!oobCode || !mode) {
-      setState({ status: "error", message: "Холбоос дутуу байна. Имэйл доторх холбоосыг бүтнээр нь нээнэ үү." });
+      router.replace("/login");
       return;
     }
 
@@ -93,7 +96,7 @@ function AuthActionContent() {
     } else {
       setState({ status: "error", message: "Танигдахгүй үйлдэл байна." });
     }
-  }, [mode, oobCode]);
+  }, [mode, oobCode, router]);
 
   const handleResetSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
